@@ -1,4 +1,37 @@
-# 阶段1: 构建阶段
+# ============================================================
+# 阶段1: 前端构建阶段 - 编译 Vue 前端到 docutranslate/static
+# ============================================================
+# 目录布局说明：
+#   /fe/                       - frontend 源码 (package.json, src/, public/, vite.config.js)
+#   /fe/docutranslate/static/  - vite outDir (vite.config.js 中 outDir: '../docutranslate/static')
+#
+# 先把上游手动维护的 static 资源 (katex/redoc/swagger/autoRender.js 等) 复制进去，
+# vite emptyOutDir=false 会保留它们，并把构建产物 (assets/, index.html) 和
+# public/ 下的内容 (i18n/, favicon.ico) 一起写到 /fe/docutranslate/static/。
+FROM node:20-alpine AS frontend
+
+WORKDIR /fe
+
+# 先复制 package 文件，利用 docker 层缓存
+COPY frontend/package.json frontend/package-lock.json ./
+
+# 安装依赖
+RUN npm ci
+
+# 复制前端源码
+COPY frontend/ ./
+
+# 复制 static 目录中的非构建资源（favicon、autoRender.js、katex、redoc、swagger、i18n 等）
+# 这些是上游手动维护的，vite 不会生成，但运行时需要
+RUN mkdir -p docutranslate/static
+COPY docutranslate/static/ ./docutranslate/static/
+
+# 构建（vite 会把 assets/、index.html、public/i18n 写到 ./docutranslate/static/）
+RUN npm run build
+
+# ============================================================
+# 阶段2: Python 依赖构建阶段
+# ============================================================
 FROM python:3.11-slim AS builder
 
 ENV UV_HTTP_TIMEOUT=300 \
@@ -16,7 +49,9 @@ COPY pyproject.toml uv.lock ./
 COPY docutranslate ./docutranslate
 RUN uv venv && uv sync --frozen --extra mcp
 
-# 阶段2: 运行阶段
+# ============================================================
+# 阶段3: 运行阶段
+# ============================================================
 FROM python:3.11-slim
 
 LABEL authors="xunbu"
@@ -35,7 +70,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 从构建阶段复制虚拟环境
 COPY --from=builder /app/.venv /app/.venv
+
+# 复制后端代码（不含 static，static 用前端构建产物覆盖）
 COPY --from=builder /app/docutranslate /app/docutranslate
+
+# 用前端构建产物覆盖 static/assets 和 index.html
+COPY --from=frontend /fe/docutranslate/static/assets /app/docutranslate/static/assets
+COPY --from=frontend /fe/docutranslate/static/index.html /app/docutranslate/static/index.html
 
 # 创建挂载点
 RUN mkdir -p /app/output

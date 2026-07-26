@@ -10,11 +10,11 @@ __pycache__
 *.so
 *.egg-info
 *.egg
-dist
 build
 
-# Frontend
-frontend
+# Frontend build artifacts (built inside Docker; source is needed)
+docutranslate/static/assets
+frontend/node_modules
 
 # IDE
 .idea
