@@ -79,7 +79,7 @@
 
         <slider-control :label="t('chunkSizeLabel')" v-model="form.chunk_size"
                         save-key="chunk_size" :default-val="defaultParams.chunk_size"
-                        :min="1000" :max="12000" :step="100" :t="t"></slider-control>
+                        :min="1000" :max="100000" :step="100" :t="t"></slider-control>
         <slider-control :label="t('concurrentLabel')" v-model="form.concurrent"
                         save-key="concurrent" :default-val="defaultParams.concurrent"
                         :min="1" :max="120" :step="1" :t="t"></slider-control>
