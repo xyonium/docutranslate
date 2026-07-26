@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 QinHan
 # SPDX-License-Identifier: MPL-2.0
 import asyncio
+import os
 from dataclasses import dataclass
 from typing import Literal, Hashable, List
 
@@ -109,11 +110,12 @@ class ConverterMineruDeploy(X2MarkdownConverter):
     def convert(self, d: Document) -> MarkdownDocument:
         self.logger.info("开始解析文件")
         files = [("files", (d.name, d.content, "application/octet-stream"))]
+        timeout_val = float(os.environ.get("DOCUTRANSLATE_MINERU_DEPLOY_TIMEOUT", "4000.0"))
         response = client.post(
             self._api_url,
             files=files,
             data=self._build_form_data(),
-            timeout=2000,
+            timeout=timeout_val,
         )
 
         response.raise_for_status()  # 检查是否有错误
@@ -141,11 +143,12 @@ class ConverterMineruDeploy(X2MarkdownConverter):
     async def convert_async(self, d: Document) -> MarkdownDocument:
         self.logger.info("开始解析文件")
         files = [("files", (d.name, d.content, "application/octet-stream"))]
+        timeout_val = float(os.environ.get("DOCUTRANSLATE_MINERU_DEPLOY_TIMEOUT", "4000.0"))
         response = await client_async.post(
             self._api_url,
             files=files,
             data=self._build_form_data(),
-            timeout=2000,
+            timeout=timeout_val,
         )
 
         response.raise_for_status()
