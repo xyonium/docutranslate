@@ -3,11 +3,14 @@
 # ============================================================
 # 目录布局说明：
 #   /fe/                       - frontend 源码 (package.json, src/, public/, vite.config.js)
-#   /fe/docutranslate/static/  - vite outDir (vite.config.js 中 outDir: '../docutranslate/static')
+#   /docutranslate/static/     - vite outDir 实际写入位置
 #
-# 先把上游手动维护的 static 资源 (katex/redoc/swagger/autoRender.js 等) 复制进去，
-# vite emptyOutDir=false 会保留它们，并把构建产物 (assets/, index.html) 和
-# public/ 下的内容 (i18n/, favicon.ico) 一起写到 /fe/docutranslate/static/。
+#   vite.config.js 中 outDir: '../docutranslate/static'，相对 WORKDIR=/fe 解析为
+#   /fe/../docutranslate/static = /docutranslate/static。
+#
+# 先把上游手动维护的 static 资源 (katex/redoc/swagger/autoRender.js 等) 复制到
+# /docutranslate/static/，vite emptyOutDir=false 会保留它们，并把构建产物
+# (assets/, index.html) 和 public/ 下的内容 (i18n/, favicon.ico) 一起写进去。
 FROM node:20-alpine AS frontend
 
 WORKDIR /fe
@@ -23,10 +26,11 @@ COPY frontend/ ./
 
 # 复制 static 目录中的非构建资源（favicon、autoRender.js、katex、redoc、swagger、i18n 等）
 # 这些是上游手动维护的，vite 不会生成，但运行时需要
-RUN mkdir -p docutranslate/static
-COPY docutranslate/static/ ./docutranslate/static/
+# 注意：路径必须是 /docutranslate/static，与 vite outDir 一致
+RUN mkdir -p /docutranslate/static
+COPY docutranslate/static/ /docutranslate/static/
 
-# 构建（vite 会把 assets/、index.html、public/i18n 写到 ./docutranslate/static/）
+# 构建（vite 会把 assets/、index.html、public/i18n 写到 /docutranslate/static/）
 RUN npm run build
 
 # ============================================================
@@ -75,8 +79,8 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/docutranslate /app/docutranslate
 
 # 用前端构建产物覆盖 static/assets 和 index.html
-COPY --from=frontend /fe/docutranslate/static/assets /app/docutranslate/static/assets
-COPY --from=frontend /fe/docutranslate/static/index.html /app/docutranslate/static/index.html
+COPY --from=frontend /docutranslate/static/assets /app/docutranslate/static/assets
+COPY --from=frontend /docutranslate/static/index.html /app/docutranslate/static/index.html
 
 # 创建挂载点
 RUN mkdir -p /app/output
